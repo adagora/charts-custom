@@ -1,19 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { IApiFullModel } from '@pages/data/api.model';
 
-interface DataPoint {
-  id: number;
-  x: number;
-  y: number;
-  target: number;
-  prediction: number;
-  diagnosisGroupId: number;
-  date: string;
-}
-interface LineChartProps {
-  width?: number;
-  height?: number;
-  item: DataPoint[];
+interface LineChartVolumeProps {
+  width: number;
+  height: number;
+  item: IApiFullModel[];
   label?: string;
   gradientColor: string;
   gradientColorMix: string;
@@ -26,7 +18,7 @@ interface LineChartProps {
   disableAxis?: boolean;
 }
 
-const LineChartwithTooltip = ({
+const LineChartVolume = ({
   width = 650,
   height = 350,
   item,
@@ -40,8 +32,8 @@ const LineChartwithTooltip = ({
   bottom = 30,
   left = 40,
   disableAxis = false,
-}: LineChartProps) => {
-  const [dataChart, setDataChart] = useState<DataPoint[]>([]);
+}: LineChartVolumeProps) => {
+  const [dataChart, setDataChart] = useState<IApiFullModel[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -58,9 +50,21 @@ const LineChartwithTooltip = ({
     buildChart();
   }, [dataChart]);
 
-  function lineChart(data: DataPoint[], title: string) {
-    const X = d3.map(data, x => x.x);
-    const Y = d3.map(data, y => y.y);
+  function lineChart(data: IApiFullModel[], title: string) {
+    const margin = {
+      top,
+      right,
+      bottom,
+      left,
+    };
+
+    const size = {
+      width,
+      height,
+    };
+
+    const X = d3.map(data, x => new Date(x.date));
+    const Y = d3.map(data, y => y.volume);
     const O = d3.map(data, d => d);
     const I = d3.map(data, (_, i) => i);
 
@@ -68,22 +72,22 @@ const LineChartwithTooltip = ({
     const xDomain = d3.extent(X);
     const maxY = d3.max(Y) as number;
 
-    const yDomain = ['0', !!maxY && maxY > 400 ? maxY.toString() : maxY + 0.1];
+    const yDomain = ['0', !!maxY && maxY > 400 ? maxY.toString() : maxY + 100];
 
     // Construct scales and axes.
-    const xScale = d3.scaleLinear(xDomain as Iterable<d3.NumberValue>, [left, width - right]);
-    const yScale = d3.scaleLinear(yDomain as Iterable<d3.NumberValue>, [height - bottom, top]);
+    const xScale = d3.scaleUtc(xDomain as Iterable<Date>, [margin.left, size.width - margin.right]);
+    const yScale = d3.scaleLinear(yDomain as Iterable<d3.NumberValue>, [size.height - margin.bottom, margin.top]);
     const xAxis = d3
       .axisBottom(xScale)
-      .ticks(width / 80)
+      .ticks(size.width / 80)
       .tickSizeOuter(0);
-    const yAxis = d3.axisLeft(yScale).ticks(height / 50);
+    const yAxis = d3.axisLeft(yScale).ticks(size.height / 50);
 
     const svg = d3
       .create('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('viewBox', [0, 0, width, height])
+      .attr('width', size.width)
+      .attr('height', size.height)
+      .attr('viewBox', [0, 0, size.width, size.height])
       .attr('style', 'max-width: 100%; height: auto; height: intrinsic;')
       .attr('font-family', 'sans-serif')
       .attr('font-size', 10)
@@ -93,7 +97,7 @@ const LineChartwithTooltip = ({
 
     svg
       .append('g')
-      .attr('transform', `translate(0,${height - bottom})`)
+      .attr('transform', `translate(0,${size.height - margin.bottom})`)
       .call(xAxis)
       .attr('color', axis)
       // hide the axis
@@ -101,7 +105,7 @@ const LineChartwithTooltip = ({
 
     svg
       .append('g')
-      .attr('transform', `translate(${left},0)`)
+      .attr('transform', `translate(${margin.left},0)`)
       .call(yAxis)
       // hide the axis
       .style('visibility', disableAxis ? 'hidden' : 'visible')
@@ -110,20 +114,20 @@ const LineChartwithTooltip = ({
         g
           .selectAll('.tick line')
           .clone()
-          .attr('x2', width - left - right)
+          .attr('x2', size.width - margin.left - margin.right)
           .attr('stroke', axis)
           .attr('stroke-opacity', 0.1),
       )
       .call(g =>
         g
           .append('text')
-          .attr('x', -left)
+          .attr('x', -margin.left)
           .attr('y', 10)
           .attr('fill', axis)
           .attr('text-anchor', 'start')
           .attr('font-size', '22px')
           .attr('font-weight', '700')
-          .attr('transform', `translate(${left},0)`)
+          .attr('transform', `translate(${margin.left},0)`)
           .text(title),
       );
 
@@ -190,108 +194,111 @@ const LineChartwithTooltip = ({
       .attr('fill', `url(#${`shadowGradient-${uid}`})`)
       .attr('d', area(I));
 
-    const points = data.map(d => [xScale(d.x), yScale(d.y)]);
-
-    function constructTooltip(
-      svg: d3.Selection<SVGSVGElement, undefined, null, undefined>,
-    ): d3.Selection<SVGGElement, undefined, null, undefined> {
-      const tooltip = svg.append('g');
-
-      tooltip
-        .selectAll('circle')
-        .data(points)
-        .enter()
-        .append('circle')
-
-        .attr('r', 4)
-        .attr('stroke', 'url(#lineGradient)')
-        .attr('stroke-width', 2)
-        .attr('fill', '#1e2730')
-        .attr('cx', 0)
-        .attr('cy', '-5')
-
-        .attr('cx', d => d[0])
-        .attr('cy', d => d[1])
-        .attr('r', 3)
-        // .attr('fill', '#2FC882')
-        //
-        .append('line')
-        .attr('y', 3)
-        .attr('stroke', '#4a667a')
-        .attr('stroke-opacity', 0.5)
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '5,3')
-        .attr('x1', 0)
-        .attr('y1', 0)
-        .attr('x2', 0);
-
-      return tooltip;
-    }
-
     // Construct tooltip
-    const tooltip = constructTooltip(svg);
+    const tooltip = constructTooltip(svg, uid);
     const tooltipLabel = constructTooltipLabel(xScale, yScale, X, Y);
 
-    // Add actions to chart
+    // Add actions
     svg
-      .on('mouseover', (d, i, n) => {
-        console.log('mouseover', d, i, n);
-        tooltip.style('display', null);
-        tooltip.select('circle').style('display', null);
-        tooltip.select('line').style('display', 'none');
-        // tooltip.attr('transform', `translate(${xScale(X[i])}, ${yScale(Y[i]) + 5})`);
+      .on('pointerenter pointermove', pointerMove)
+      .on('pointerleave', pointerLeave)
+      .on('touchstart', event => event.preventDefault());
 
-        const path = tooltip.selectAll('path').data(data).join('path').attr('fill', 'white').attr('opacity', '0.8');
+    function pointerMove(event: MouseEvent): void {
+      const i = X.findIndex(x => x.toDateString() === xScale.invert(d3.pointer(event)[0]).toDateString());
 
-        const text = tooltip
-          .selectAll('text')
-          .data(data)
-          .join('text')
-          .attr('x', 0)
-          .attr('y', 0)
-          .attr('text-anchor', 'middle')
+      // short-circuit for dates without data
+      if (i < 0) {
+        return;
+      }
 
-          .call(text =>
-            text
-              .selectAll('tspan')
-              .data(
-                `x: ${d.x} y: ${d.y} prediction: ${d.prediction} target: ${d.target} diagnosisGroupId: ${d.diagnosisGroupId} date: ${d.date}`,
-              )
-              .join('tspan')
-              .attr('x', 0)
-              .attr('y', (_, i) => `${i * 1.1}em`)
-              .attr('font-weight', (_, i) => (i ? null : 'bold'))
-              .text(d => d),
-          );
+      tooltip.style('display', null);
+      tooltip.select('circle').style('display', null);
+      tooltip.select('line').style('display', null);
 
-        const { y, width: w, height: h } = (text.node() as SVGGraphicsElement).getBBox();
-        text.attr('transform', `translate(${-w / 2}, ${20 - y})`);
-        path
-          .attr('d', `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 80}z`)
-          .attr('transform', `translate(0, 5)`);
-        svg.property('value', O[i]).dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-      })
-      .on('mouseout', (d, i, n) => {
-        tooltip.style('display', 'none');
-        svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-      });
+      tooltip.attr('transform', `translate(${xScale(X[i])},${yScale(Y[i]) + 5})`);
+
+      const path = tooltip.selectAll('path').data(data).join('path').attr('fill', 'white').attr('opacity', '0.8');
+
+      const text = tooltip
+        .selectAll('text')
+        .data(data)
+        .join('text')
+        .call(text =>
+          text
+            .selectAll('tspan')
+            .data(`${tooltipLabel(i, i, data)}`.split(/\n/))
+            .join('tspan')
+            .attr('x', 0)
+            .attr('y', (_, i) => `${i * 1.1}em`)
+            .attr('font-weight', (_, i) => (i ? null : 'bold'))
+            .text(d => d),
+        );
+
+      tooltip.select('line').attr('y2', size.height - margin.bottom - margin.top / 2 - yScale(Y[i]) + 2);
+
+      const { y, width: w, height: h } = (text.node() as SVGGraphicsElement).getBBox();
+      text.attr('transform', `translate(${-w / 2},${20 - y})`);
+
+      path
+        .attr('d', `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`)
+        .attr('transform', `translate(0, 5)`);
+
+      svg.property('value', O[i]).dispatch('input', { bubbles: true } as d3.CustomEventParameters);
+    }
+
+    function pointerLeave() {
+      tooltip.style('display', 'none');
+      svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
+    }
 
     return svg.node() as Node;
+  }
+
+  function constructTooltip(
+    svg: d3.Selection<SVGSVGElement, undefined, null, undefined>,
+    id: string,
+  ): d3.Selection<SVGGElement, undefined, null, undefined> {
+    const tooltip = svg.append('g').style('pointer-events', 'none');
+
+    tooltip
+      .append('circle')
+      .attr('r', 4)
+      .attr('stroke', `url(#lineGradient-${id})`)
+      .attr('stroke-width', 2)
+      .attr('fill', '#1e2730')
+      .attr('cx', 0)
+      .attr('cy', '-5')
+      .style('display', 'none');
+
+    tooltip
+      .append('line')
+      .attr('y', 3)
+      .attr('stroke', '#4a667a')
+      .attr('stroke-opacity', 0.5)
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '5,3')
+      .attr('x1', 0)
+      .attr('y1', 0)
+      .attr('x2', 0)
+      .style('display', 'none');
+
+    return tooltip;
   }
 
   function constructTooltipLabel(
     xScale: d3.ScaleTime<number, number, never>,
     yScale: d3.ScaleLinear<number, number, never>,
-    X: any[],
+    X: Date[],
     Y: number[],
   ) {
-    const formatDate = xScale.tickFormat(100);
+    const formatDate = xScale.tickFormat(undefined, '%b %-d, %Y');
     const formatValue = yScale.tickFormat(100);
 
-    return (i: number, _number?: number, _data?: any[]) => `${formatDate(X[i])}\n${formatValue(Y[i])}`;
+    return (i: number, _number?: number, _data?: IApiFullModel[]) => `${formatDate(X[i])}\n${formatValue(Y[i])}`;
   }
 
   return <div ref={containerRef} />;
 };
 
-export default LineChartwithTooltip;
+export default LineChartVolume;

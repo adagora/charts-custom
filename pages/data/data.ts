@@ -83,3 +83,33 @@ const data = [
 ];
 
 export default data;
+
+export const data2 = [
+  {
+    date: new Date('2022-10-01T00:00:00.000Z'),
+    open: 424,
+    high: 535,
+    low: 24,
+    close: 777,
+    volume: 60000,
+    adjclose: 109.0,
+  },
+  {
+    date: new Date('2022-10-01T01:00:00.000Z'),
+    open: 641,
+    high: 116,
+    low: 108.0,
+    close: 124,
+    volume: 90000,
+    adjclose: 101,
+  },
+  {
+    date: new Date('2022-10-01T02:00:00.000Z'),
+    open: 565,
+    high: 115,
+    low: 106,
+    close: 112,
+    volume: 85000,
+    adjclose: 611.0,
+  },
+];

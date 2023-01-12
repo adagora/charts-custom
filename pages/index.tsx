@@ -1,49 +1,59 @@
 import type { NextPage } from 'next';
 import { Button, Container, Typography, Box, CircularProgress, Divider } from '@mui/material';
-import ButtonLink from '@components/ButtonLink';
 import { useEffect, useState } from 'react';
-import LineChartwithTooltipBasic from '@components/LineChartBasicDemo';
-import Line from '@components/Line';
-import data from './data/data';
+import LineChartwithTooltip from '@components/LineChartwithTooltip';
+import LineChartVolume from '@components/LineChartVolume';
+import data, { data2 } from './data/data';
+import { predictionData } from './data/api.model';
 
 const Home: NextPage = () => {
-  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      clearTimeout(timer);
-    };
-  });
+  let color1;
+  let color2;
+  let color3;
+  // render 3 random colors
+  const randomColor = () => {
+    color1 = Math.floor(Math.random() * 16777215).toString(16);
+    color2 = Math.floor(Math.random() * 16777215).toString(16);
+    color3 = Math.floor(Math.random() * 16777215).toString(16);
+    return { color1, color2, color3 };
+  };
 
   // simulate loading for 2 seconds
-  const [pending, setPending] = useState(true);
   useEffect(() => {
+    randomColor();
     const timer = setTimeout(() => {
       setPending(false);
-    }, 2000);
+    }, 500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [pending]);
 
   return (
     <Container>
-      <Box display="flex" justifyContent="center" alignItems="center">
-        {pending ? <CircularProgress color="secondary" /> : <LineChartwithTooltipBasic />}
+      <Box display="flex" justifyContent="center" alignItems="center" height={300} width="100%">
+        {pending ? (
+          <CircularProgress />
+        ) : (
+          <LineChartwithTooltip
+            item={predictionData}
+            gradientColor={randomColor().color1}
+            gradientColorMix={randomColor().color2}
+            background={randomColor().color3}
+          />
+        )}
       </Box>
       <Box pt={1} pb={2} display="flex" justifyContent="center" alignItems="center">
         <Button
+          type="submit"
           variant="contained"
           size="small"
           sx={{
             mt: '55px',
           }}
+          onClick={() => setPending(true)}
         >
-          Test Button Link
+          Random color
         </Button>
       </Box>
       <Divider sx={{ backgroundColor: '9FD2DB' }} />
@@ -51,7 +61,43 @@ const Home: NextPage = () => {
         <Typography variant="h1" component="h1" gutterBottom>
           24h volume
         </Typography>
-        <Line width={700} height={400} data={data} />
+        <LineChartVolume
+          width={700}
+          height={400}
+          item={data}
+          label="volume/utc"
+          gradientColor="#880808"
+          gradientColorMix="#880808"
+          background="transparent"
+        />
+        <LineChartVolume
+          width={700}
+          height={400}
+          item={data2}
+          gradientColor="#3525c4"
+          gradientColorMix="#c4aa25"
+          background="transparent"
+          label="volume/utc"
+          axis="#3525c4"
+          top={50}
+          right={100}
+          bottom={30}
+          left={50}
+        />
+
+        <LineChartVolume
+          width={700}
+          height={400}
+          item={data2}
+          gradientColor="#27d827"
+          gradientColorMix="#27d827"
+          label="without axis"
+          top={50}
+          right={100}
+          bottom={30}
+          left={50}
+          disableAxis
+        />
       </Box>
     </Container>
   );
