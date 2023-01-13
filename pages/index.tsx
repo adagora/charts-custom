@@ -1,5 +1,5 @@
 import type { NextPage } from 'next';
-import { Button, Container, Typography, Box, CircularProgress, Divider } from '@mui/material';
+import { Button, Container, Typography, Box, CircularProgress, Divider, Popover } from '@mui/material';
 import { useEffect, useState } from 'react';
 import LineChartwithTooltip from '@components/LineChartwithTooltip';
 import LineChartVolume from '@components/LineChartVolume';
@@ -8,7 +8,6 @@ import { predictionData } from './data/api.model';
 
 const Home: NextPage = () => {
   const [pending, setPending] = useState(true);
-
   let color1;
   let color2;
   let color3;
@@ -31,11 +30,18 @@ const Home: NextPage = () => {
 
   return (
     <Container>
-      <Box display="flex" justifyContent="center" alignItems="center" height={300} width="100%">
+      <Box display="flex" justifyContent="flex-end" alignItems="center">
+        <Button type="submit" variant="contained" size="small" onClick={() => setPending(true)}>
+          Random color
+        </Button>
+      </Box>
+      <Box display="flex" justifyContent="flex-start" alignItems="center" height={300} width={1000}>
         {pending ? (
           <CircularProgress />
         ) : (
           <LineChartwithTooltip
+            width={700}
+            height={400}
             item={predictionData}
             gradientColor={randomColor().color1}
             gradientColorMix={randomColor().color2}
@@ -43,19 +49,7 @@ const Home: NextPage = () => {
           />
         )}
       </Box>
-      <Box pt={1} pb={2} display="flex" justifyContent="center" alignItems="center">
-        <Button
-          type="submit"
-          variant="contained"
-          size="small"
-          sx={{
-            mt: '55px',
-          }}
-          onClick={() => setPending(true)}
-        >
-          Random color
-        </Button>
-      </Box>
+      <Box padding={5} />
       <Divider sx={{ backgroundColor: '9FD2DB' }} />
       <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" pt={2}>
         <Typography variant="h1" component="h1" gutterBottom>
@@ -81,7 +75,7 @@ const Home: NextPage = () => {
           axis="#3525c4"
           top={50}
           right={100}
-          bottom={30}
+          bottom={0}
           left={50}
         />
 

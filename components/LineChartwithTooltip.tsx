@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { Box } from '@mui/system';
 
 interface DataPoint {
   id: number;
@@ -43,6 +44,8 @@ const LineChartwithTooltip = ({
 }: LineChartProps) => {
   const [dataChart, setDataChart] = useState<DataPoint[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [pointDescription, setPointDescription] = useState<DataPoint[]>([]);
+  const [activePoint, setActivePoint] = useState<boolean>(false);
 
   useEffect(() => {
     setDataChart(item);
@@ -190,31 +193,61 @@ const LineChartwithTooltip = ({
       .attr('fill', `url(#${`shadowGradient-${uid}`})`)
       .attr('d', area(I));
 
-    const points = data.map(d => [xScale(d.x), yScale(d.y)]);
+    const POINTS = data.map(d => [xScale(d.x), yScale(d.y), { ...d }]);
+    const tooltip = constructTooltip(svg);
+    function pointermoved(event: any) {
+      const i = d3.bisectCenter(X as any, xScale.invert(d3.pointer(event)[0]));
+      tooltip.style('display', null);
+      (svg as any).property('value', O[i]).dispatch('input', { bubbles: true });
+    }
+
+    function pointerleft() {
+      tooltip.style('display', 'none');
+      tooltip.style('display', 'none');
+      (svg.node() as any).value = null;
+      svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
+    }
 
     function constructTooltip(
       svg: d3.Selection<SVGSVGElement, undefined, null, undefined>,
     ): d3.Selection<SVGGElement, undefined, null, undefined> {
-      const tooltip = svg.append('g');
+      const tooltip = svg.append('g').style('pointer-events', 'none');
 
-      tooltip
+      svg
         .selectAll('circle')
-        .data(points)
+        .data(POINTS)
         .enter()
         .append('circle')
+        .on('pointerenter pointermove', pointermoved)
+        .on('pointerleave', pointerleft)
+        .on('touchstart', event => event.preventDefault())
+        .on('click', event => {
+          setPointDescription((prevState: any) => {
+            // eslint-disable-next-line no-underscore-dangle
+            const pointClick = event.target.__data__;
+            // if prevstate is the same drop it from array
+            if (prevState.includes(pointClick[2])) {
+              return prevState.filter((item: any) => item !== pointClick[2]);
+            }
+
+            // drop from array 2 first items and return 3rd
+            const pointClickDescription = pointClick[2];
+
+            return prevState.concat(pointClickDescription);
+          });
+        })
 
         .attr('r', 4)
         .attr('stroke', 'url(#lineGradient)')
+        .attr('cursor', 'pointer')
         .attr('stroke-width', 2)
         .attr('fill', '#1e2730')
         .attr('cx', 0)
         .attr('cy', '-5')
-
         .attr('cx', d => d[0])
         .attr('cy', d => d[1])
         .attr('r', 3)
-        // .attr('fill', '#2FC882')
-        //
+
         .append('line')
         .attr('y', 3)
         .attr('stroke', '#4a667a')
@@ -228,70 +261,38 @@ const LineChartwithTooltip = ({
       return tooltip;
     }
 
-    // Construct tooltip
-    const tooltip = constructTooltip(svg);
-    const tooltipLabel = constructTooltipLabel(xScale, yScale, X, Y);
-
-    // Add actions to chart
-    svg
-      .on('mouseover', (d, i, n) => {
-        console.log('mouseover', d, i, n);
-        tooltip.style('display', null);
-        tooltip.select('circle').style('display', null);
-        tooltip.select('line').style('display', 'none');
-        // tooltip.attr('transform', `translate(${xScale(X[i])}, ${yScale(Y[i]) + 5})`);
-
-        const path = tooltip.selectAll('path').data(data).join('path').attr('fill', 'white').attr('opacity', '0.8');
-
-        const text = tooltip
-          .selectAll('text')
-          .data(data)
-          .join('text')
-          .attr('x', 0)
-          .attr('y', 0)
-          .attr('text-anchor', 'middle')
-
-          .call(text =>
-            text
-              .selectAll('tspan')
-              .data(
-                `x: ${d.x} y: ${d.y} prediction: ${d.prediction} target: ${d.target} diagnosisGroupId: ${d.diagnosisGroupId} date: ${d.date}`,
-              )
-              .join('tspan')
-              .attr('x', 0)
-              .attr('y', (_, i) => `${i * 1.1}em`)
-              .attr('font-weight', (_, i) => (i ? null : 'bold'))
-              .text(d => d),
-          );
-
-        const { y, width: w, height: h } = (text.node() as SVGGraphicsElement).getBBox();
-        text.attr('transform', `translate(${-w / 2}, ${20 - y})`);
-        path
-          .attr('d', `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 80}z`)
-          .attr('transform', `translate(0, 5)`);
-        svg.property('value', O[i]).dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-      })
-      .on('mouseout', (d, i, n) => {
-        tooltip.style('display', 'none');
-        svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-      });
-
     return svg.node() as Node;
   }
 
-  function constructTooltipLabel(
-    xScale: d3.ScaleTime<number, number, never>,
-    yScale: d3.ScaleLinear<number, number, never>,
-    X: any[],
-    Y: number[],
-  ) {
-    const formatDate = xScale.tickFormat(100);
-    const formatValue = yScale.tickFormat(100);
+  return (
+    <>
+      <div ref={containerRef} />
 
-    return (i: number, _number?: number, _data?: any[]) => `${formatDate(X[i])}\n${formatValue(Y[i])}`;
-  }
-
-  return <div ref={containerRef} />;
+      {/* Side container with information about points */}
+      <Box display="flex" flexDirection="column" justifyContent="space-around" alignItems="flex-end">
+        {pointDescription &&
+          pointDescription.length > 0 &&
+          pointDescription.map(p => (
+            <Box padding={2} fontWeight={500} borderRadius={2} bgcolor="rgba(52, 49, 58, 0.6)" key={p.id} pb={2}>
+              <div>X: {p.x}</div>
+              <div>Y: {p.y}</div>
+              <div>Target: {p.target}</div>
+              <div>Prediction: {p.prediction}</div>
+              <div> DiagnosisGroupId: {p.diagnosisGroupId}</div>
+              <button
+                type="button"
+                onClick={() => {
+                  const items = pointDescription.filter(item => item.id !== p.id);
+                  setPointDescription(items);
+                }}
+              >
+                Close
+              </button>
+            </Box>
+          ))}
+      </Box>
+    </>
+  );
 };
 
 export default LineChartwithTooltip;

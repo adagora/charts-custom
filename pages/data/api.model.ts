@@ -67,7 +67,7 @@ export const predictionData = [
     x: 90,
     y: 0.7,
     target: 0,
-    prediction: 0,
+    prediction: 3,
     diagnosisGroupId: 1,
     date: '2020-01-05',
   },
