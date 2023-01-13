@@ -75,7 +75,7 @@ const Home: NextPage = () => {
           axis="#3525c4"
           top={50}
           right={100}
-          bottom={0}
+          bottom={50}
           left={50}
         />
 

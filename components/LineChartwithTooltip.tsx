@@ -45,7 +45,6 @@ const LineChartwithTooltip = ({
   const [dataChart, setDataChart] = useState<DataPoint[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [pointDescription, setPointDescription] = useState<DataPoint[]>([]);
-  const [activePoint, setActivePoint] = useState<boolean>(false);
 
   useEffect(() => {
     setDataChart(item);
