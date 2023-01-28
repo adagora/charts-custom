@@ -30,6 +30,18 @@ const Home: NextPage = () => {
     return () => clearTimeout(timer);
   }, [pending]);
 
+  const DEFAULT_API_DATA = {
+    x: new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+    y: 19431531513,
+  };
+
   return (
     <Container>
       <Box display="flex" justifyContent="flex-end" alignItems="center">
@@ -107,6 +119,7 @@ const Home: NextPage = () => {
           bottom={30}
           left={50}
           disableAxis
+          defaultValue={DEFAULT_API_DATA}
         />
       </Box>
     </Container>

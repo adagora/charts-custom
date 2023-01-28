@@ -19,6 +19,7 @@ interface LineChartVolumeProps {
   bottom?: number;
   left?: number;
   disableAxis?: boolean;
+  defaultValue?: { x: number | string | Date | null | undefined; y: number | null | undefined };
 }
 
 const LineChartVolumeTooltip = ({
@@ -35,9 +36,16 @@ const LineChartVolumeTooltip = ({
   bottom = 30,
   left = 40,
   disableAxis = false,
+  defaultValue,
 }: LineChartVolumeProps) => {
   const [dataChart, setDataChart] = useState<IApiFullModel[]>([]);
-  const [hoverData, setHoverData] = useState<{ x: number | Date | null; y: number | null }>({ x: 0, y: 0 });
+  const [hoverData, setHoverData] = useState<{
+    x: number | string | Date | null | undefined;
+    y: number | null | undefined;
+  }>({
+    x: defaultValue?.x,
+    y: defaultValue?.y,
+  });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -181,38 +189,40 @@ const LineChartVolumeTooltip = ({
       .attr('stroke-linejoin', 'round')
       .attr('stroke-linecap', 'round')
       .attr('d', line(I))
-      .on('mouseenter', event => {
+      .on('mouseover', event => {
         const [x, y] = d3.pointer(event, this);
         const date = xScale.invert(x);
         const volume = yScale.invert(y);
-        // const debouncedUpdate = _.debounce((x, y) => {
-        verticalLine
-          .attr('d', `M ${x} ${yScale(y)} V ${y}`)
-          .attr('stroke', 'black')
-          .attr('stroke-width', 1)
-          .attr('fill', 'none');
+        const debouncedUpdate = _.debounce((x, y) => {
+          verticalLine
+            .attr('d', `M ${x} ${yScale(y)} V ${y}`)
+            .attr('stroke', 'black')
+            .attr('stroke-width', 1)
+            .attr('fill', 'none');
 
-        svg
-          .append('circle')
-          .attr('cx', x)
-          .attr('cy', y)
-          .attr('r', 5)
-          .attr('stroke-width', 2)
-          .attr('fill', 'black')
-          .attr('stroke-dasharray', '5,5');
-        // }, 150);
-        // debouncedUpdate(x, y);
-        // svg.on('mousemove', function () {
-        setHoverData({ x: date, y: volume });
-        // });
+          svg
+            .append('circle')
+            .attr('cx', x)
+            .attr('cy', y)
+            .attr('r', 5)
+            .attr('stroke-width', 2)
+            .attr('fill', 'black')
+            .attr('stroke-dasharray', '5,5');
+
+          setHoverData({ x: date, y: volume });
+        }, 5);
+        debouncedUpdate(x, y);
         svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
       })
 
       .on('mouseout', () => {
-        setHoverData({ x: null, y: null });
-        svg.selectAll('circle').remove();
-        // when mouse leave, remove vertical line
-        verticalLine.attr('d', '');
+        svg.on('mousemove', function () {
+          setHoverData({ x: defaultValue?.x, y: defaultValue?.y });
+          svg.selectAll('circle').remove();
+          // when mouse leave, remove vertical line
+          verticalLine.attr('d', '');
+        });
+
         svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
       });
 
@@ -242,6 +252,11 @@ const LineChartVolumeTooltip = ({
           <Typography fontSize="32px" pr={2}>
             {hoverData.y?.toFixed(2) || 0}
           </Typography>
+        </Box>
+        <Box display="flex" flexDirection="row" alignItems="center" borderRadius="50%">
+          {/* <Typography fontSize="8px" pr={2}>
+            {hoverData.x?.toString()}
+          </Typography> */}
         </Box>
         <Typography fontSize="12px">View (last 24 hours )</Typography>
       </Box>
