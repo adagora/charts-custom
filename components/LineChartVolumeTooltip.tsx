@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { IApiFullModel } from '@pages/data/api.model';
+import { Typography } from '@mui/material';
+import { Box } from '@mui/system';
+import _ from 'lodash';
 
 interface LineChartVolumeProps {
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   item: IApiFullModel[];
   label?: string;
-  gradientColor: string;
-  gradientColorMix: string;
+  gradientColor?: string;
+  gradientColorMix?: string;
   background?: string;
   axis?: string;
   top?: number;
@@ -18,7 +21,7 @@ interface LineChartVolumeProps {
   disableAxis?: boolean;
 }
 
-const LineChartVolume = ({
+const LineChartVolumeTooltip = ({
   width = 650,
   height = 350,
   item,
@@ -34,6 +37,8 @@ const LineChartVolume = ({
   disableAxis = false,
 }: LineChartVolumeProps) => {
   const [dataChart, setDataChart] = useState<IApiFullModel[]>([]);
+  const [hoverData, setHoverData] = useState<{ x: number | Date | null; y: number | null }>({ x: 0, y: 0 });
+
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -160,6 +165,14 @@ const LineChartVolume = ({
       .x(i => xScale(X[i]))
       .y(i => yScale(Y[i]));
 
+    const verticalLine = svg
+      .append('path')
+
+      // add dashed line
+      .attr('stroke-dasharray', '5,5')
+      .attr('stroke-width', 2)
+      .attr('fill', 'none');
+
     svg
       .append('path')
       .attr('fill', 'none')
@@ -167,7 +180,41 @@ const LineChartVolume = ({
       .attr('stroke-width', 2)
       .attr('stroke-linejoin', 'round')
       .attr('stroke-linecap', 'round')
-      .attr('d', line(I));
+      .attr('d', line(I))
+      .on('mouseenter', event => {
+        const [x, y] = d3.pointer(event, this);
+        const date = xScale.invert(x);
+        const volume = yScale.invert(y);
+        // const debouncedUpdate = _.debounce((x, y) => {
+        verticalLine
+          .attr('d', `M ${x} ${yScale(y)} V ${y}`)
+          .attr('stroke', 'black')
+          .attr('stroke-width', 1)
+          .attr('fill', 'none');
+
+        svg
+          .append('circle')
+          .attr('cx', x)
+          .attr('cy', y)
+          .attr('r', 5)
+          .attr('stroke-width', 2)
+          .attr('fill', 'black')
+          .attr('stroke-dasharray', '5,5');
+        // }, 150);
+        // debouncedUpdate(x, y);
+        // svg.on('mousemove', function () {
+        setHoverData({ x: date, y: volume });
+        // });
+        svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
+      })
+
+      .on('mouseout', () => {
+        setHoverData({ x: null, y: null });
+        svg.selectAll('circle').remove();
+        // when mouse leave, remove vertical line
+        verticalLine.attr('d', '');
+        svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
+      });
 
     // Construct chart area
     const area = d3
@@ -182,111 +229,27 @@ const LineChartVolume = ({
       .attr('fill', `url(#${`shadowGradient-${uid}`})`)
       .attr('d', area(I));
 
-    // Construct tooltip
-    const tooltip = constructTooltip(svg, uid);
-    const tooltipLabel = constructTooltipLabel(xScale, yScale, X, Y);
-
-    // Add actions
-    svg
-      .on('pointerenter pointermove', pointerMove)
-      .on('pointerleave', pointerLeave)
-      .on('touchstart', event => event.preventDefault());
-
-    function pointerMove(event: MouseEvent): void {
-      const i = X.findIndex(x => x.toDateString() === xScale.invert(d3.pointer(event)[0]).toDateString());
-
-      // short-circuit for dates without data
-      if (i < 0) {
-        return;
-      }
-
-      tooltip.style('display', null);
-      tooltip.select('circle').style('display', null);
-      tooltip.select('line').style('display', null);
-
-      tooltip.attr('transform', `translate(${xScale(X[i])},${yScale(Y[i]) + 5})`);
-
-      const path = tooltip.selectAll('path').data(data).join('path').attr('fill', 'white').attr('opacity', '0.8');
-
-      const text = tooltip
-        .selectAll('text')
-        .data(data)
-        .join('text')
-        .call(text =>
-          text
-            .selectAll('tspan')
-            .data(`${tooltipLabel(i, i, data)}`.split(/\n/))
-            .join('tspan')
-            .attr('x', 0)
-            .attr('y', (_, i) => `${i * 1.1}em`)
-            .attr('font-weight', (_, i) => (i ? null : 'bold'))
-            .text(d => d),
-        );
-
-      tooltip.select('line').attr('y2', size.height - margin.bottom - margin.top / 2 - yScale(Y[i]) + 2);
-
-      const { y, width: w, height: h } = (text.node() as SVGGraphicsElement).getBBox();
-      text.attr('transform', `translate(${-w / 2},${20 - y})`);
-
-      path
-        .attr('d', `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`)
-        .attr('transform', `translate(0, 5)`);
-
-      svg.property('value', O[i]).dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-    }
-
-    function pointerLeave() {
-      tooltip.style('display', 'none');
-      svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-    }
-
     return svg.node() as Node;
   }
 
-  function constructTooltip(
-    svg: d3.Selection<SVGSVGElement, undefined, null, undefined>,
-    id: string,
-  ): d3.Selection<SVGGElement, undefined, null, undefined> {
-    const tooltip = svg.append('g').style('pointer-events', 'none');
+  return (
+    <>
+      <Box display="flex" flexDirection="column" justifyContent="flex-start" alignItems="flex-start">
+        <Typography color="primary" variant="h6" fontSize="12px">
+          DAILY TRADING VOLUME
+        </Typography>
+        <Box display="flex" flexDirection="row" alignItems="center" borderRadius="50%">
+          <Typography fontSize="32px" pr={2}>
+            {hoverData.y?.toFixed(2) || 0}
+          </Typography>
+        </Box>
+        <Typography fontSize="12px">View (last 24 hours )</Typography>
+      </Box>
 
-    tooltip
-      .append('circle')
-      .attr('r', 4)
-      .attr('stroke', `url(#lineGradient-${id})`)
-      .attr('stroke-width', 2)
-      .attr('fill', '#1e2730')
-      .attr('cx', 0)
-      .attr('cy', '-5')
-      .style('display', 'none');
-
-    tooltip
-      .append('line')
-      .attr('y', 3)
-      .attr('stroke', '#4a667a')
-      .attr('stroke-opacity', 0.5)
-      .attr('stroke-width', 1)
-      .attr('stroke-dasharray', '5,3')
-      .attr('x1', 0)
-      .attr('y1', 0)
-      .attr('x2', 0)
-      .style('display', 'none');
-
-    return tooltip;
-  }
-
-  function constructTooltipLabel(
-    xScale: d3.ScaleTime<number, number, never>,
-    yScale: d3.ScaleLinear<number, number, never>,
-    X: Date[],
-    Y: number[],
-  ) {
-    const formatDate = xScale.tickFormat(undefined, '%b %-d, %Y');
-    const formatValue = yScale.tickFormat(100);
-
-    return (i: number, _number?: number, _data?: IApiFullModel[]) => `${formatDate(X[i])}\n${formatValue(Y[i])}`;
-  }
-
-  return <div ref={containerRef} />;
+      {/* Chart */}
+      <div ref={containerRef} />
+    </>
+  );
 };
 
-export default LineChartVolume;
+export default LineChartVolumeTooltip;

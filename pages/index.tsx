@@ -1,12 +1,14 @@
 import type { NextPage } from 'next';
-import { Button, Container, Typography, Box, CircularProgress, Divider, Popover } from '@mui/material';
+import { Button, Container, Typography, Box, CircularProgress, Divider } from '@mui/material';
 import { useEffect, useState } from 'react';
 import LineChartwithTooltip from '@components/LineChartwithTooltip';
 import LineChartVolume from '@components/LineChartVolume';
+import LineChartVolumeTooltip from '@components/LineChartVolumeTooltip';
 import data, { data2 } from './data/data';
 import { predictionData } from './data/api.model';
 
 const Home: NextPage = () => {
+  const [pointData, setPointData] = useState<{ x: number | Date | null; y: number | null }>();
   const [pending, setPending] = useState(true);
   let color1;
   let color2;
@@ -80,6 +82,20 @@ const Home: NextPage = () => {
         />
 
         <LineChartVolume
+          width={700}
+          height={400}
+          item={data2}
+          gradientColor="#9F2B68"
+          gradientColorMix="#800020"
+          label="without axis"
+          top={50}
+          right={100}
+          bottom={30}
+          left={50}
+          disableAxis
+        />
+
+        <LineChartVolumeTooltip
           width={700}
           height={400}
           item={data2}
