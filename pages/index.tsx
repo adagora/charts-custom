@@ -1,14 +1,13 @@
 import type { NextPage } from 'next';
 import { Button, Container, Typography, Box, CircularProgress, Divider } from '@mui/material';
 import { useEffect, useState } from 'react';
-import LineChartwithTooltip from '@components/LineChartwithTooltip';
 import LineChartVolume from '@components/LineChartVolume';
-import LineChartVolumeTooltip from '@components/LineChartVolumeTooltip';
+import LineChartVolumeTooltipOnHover from '@components/LineChartVolumeTooltipOnHover';
+import LineChartwithTooltipOnClick from '@components/LineChartwithTooltipOnClick';
 import data, { data2 } from './data/data';
 import { predictionData } from './data/api.model';
 
 const Home: NextPage = () => {
-  const [pointData, setPointData] = useState<{ x: number | Date | null; y: number | null }>();
   const [pending, setPending] = useState(true);
   let color1;
   let color2;
@@ -44,25 +43,44 @@ const Home: NextPage = () => {
 
   return (
     <Container>
-      <Box display="flex" justifyContent="flex-end" alignItems="center">
-        <Button type="submit" variant="contained" size="small" onClick={() => setPending(true)}>
-          Random color
-        </Button>
+      <Box padding={10}>
+        <LineChartVolumeTooltipOnHover
+          width={700}
+          height={400}
+          item={data2}
+          gradientColor="#27d827"
+          gradientColorMix="#27d827"
+          label="without axis"
+          top={50}
+          right={100}
+          bottom={30}
+          left={50}
+          disableAxis
+          defaultValue={DEFAULT_API_DATA}
+        />
       </Box>
       <Box display="flex" justifyContent="flex-start" alignItems="center" height={300} width={1000}>
-        {pending ? (
-          <CircularProgress />
-        ) : (
-          <LineChartwithTooltip
-            width={700}
-            height={400}
-            item={predictionData}
-            gradientColor={randomColor().color1}
-            gradientColorMix={randomColor().color2}
-            background={randomColor().color3}
-          />
-        )}
+        <Box display="flex" flexDirection="column" justifyContent="flex-end" alignItems="center">
+          <Box pb={2}>
+            <Button type="submit" variant="contained" size="small" onClick={() => setPending(true)}>
+              Random color
+            </Button>
+          </Box>
+          {pending ? (
+            <CircularProgress />
+          ) : (
+            <LineChartwithTooltipOnClick
+              width={700}
+              height={400}
+              item={predictionData}
+              gradientColor={randomColor().color1}
+              gradientColorMix={randomColor().color2}
+              background={randomColor().color3}
+            />
+          )}
+        </Box>
       </Box>
+
       <Box padding={5} />
       <Divider sx={{ backgroundColor: '9FD2DB' }} />
       <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" pt={2}>
@@ -105,21 +123,6 @@ const Home: NextPage = () => {
           bottom={30}
           left={50}
           disableAxis
-        />
-
-        <LineChartVolumeTooltip
-          width={700}
-          height={400}
-          item={data2}
-          gradientColor="#27d827"
-          gradientColorMix="#27d827"
-          label="without axis"
-          top={50}
-          right={100}
-          bottom={30}
-          left={50}
-          disableAxis
-          defaultValue={DEFAULT_API_DATA}
         />
       </Box>
     </Container>

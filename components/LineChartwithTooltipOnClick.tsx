@@ -1,17 +1,23 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { IApiFullModel } from '@pages/data/api.model';
-import { Typography } from '@mui/material';
 import { Box } from '@mui/system';
-import _ from 'lodash';
 
-interface LineChartVolumeProps {
+interface DataPoint {
+  id: number;
+  x: number;
+  y: number;
+  target: number;
+  prediction: number;
+  diagnosisGroupId: number;
+  date: string;
+}
+interface LineChartProps {
   width?: number;
   height?: number;
-  item: IApiFullModel[];
+  item: DataPoint[];
   label?: string;
-  gradientColor?: string;
-  gradientColorMix?: string;
+  gradientColor: string;
+  gradientColorMix: string;
   background?: string;
   axis?: string;
   top?: number;
@@ -19,10 +25,9 @@ interface LineChartVolumeProps {
   bottom?: number;
   left?: number;
   disableAxis?: boolean;
-  defaultValue?: { x: number | string | Date | null | undefined; y: number | null | undefined };
 }
 
-const LineChartVolumeTooltip = ({
+const LineChartwithTooltipOnClick = ({
   width = 650,
   height = 350,
   item,
@@ -36,18 +41,10 @@ const LineChartVolumeTooltip = ({
   bottom = 30,
   left = 40,
   disableAxis = false,
-  defaultValue,
-}: LineChartVolumeProps) => {
-  const [dataChart, setDataChart] = useState<IApiFullModel[]>([]);
-  const [hoverData, setHoverData] = useState<{
-    x: number | string | Date | null | undefined;
-    y: number | null | undefined;
-  }>({
-    x: defaultValue?.x,
-    y: defaultValue?.y,
-  });
-
+}: LineChartProps) => {
+  const [dataChart, setDataChart] = useState<DataPoint[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [pointDescription, setPointDescription] = useState<DataPoint[]>([]);
 
   useEffect(() => {
     setDataChart(item);
@@ -63,9 +60,9 @@ const LineChartVolumeTooltip = ({
     buildChart();
   }, [dataChart]);
 
-  function lineChart(data: IApiFullModel[], title: string) {
-    const X = d3.map(data, x => new Date(x.date));
-    const Y = d3.map(data, y => y.volume);
+  function lineChart(data: DataPoint[], title: string) {
+    const X = d3.map(data, x => x.x);
+    const Y = d3.map(data, y => y.y);
     const O = d3.map(data, d => d);
     const I = d3.map(data, (_, i) => i);
 
@@ -73,10 +70,10 @@ const LineChartVolumeTooltip = ({
     const xDomain = d3.extent(X);
     const maxY = d3.max(Y) as number;
 
-    const yDomain = ['0', !!maxY && maxY > 400 ? maxY.toString() : maxY + 100];
+    const yDomain = ['0', !!maxY && maxY > 400 ? maxY.toString() : maxY + 0.1];
 
     // Construct scales and axes.
-    const xScale = d3.scaleUtc(xDomain as Iterable<Date>, [left, width - right]);
+    const xScale = d3.scaleLinear(xDomain as Iterable<d3.NumberValue>, [left, width - right]);
     const yScale = d3.scaleLinear(yDomain as Iterable<d3.NumberValue>, [height - bottom, top]);
     const xAxis = d3
       .axisBottom(xScale)
@@ -173,14 +170,6 @@ const LineChartVolumeTooltip = ({
       .x(i => xScale(X[i]))
       .y(i => yScale(Y[i]));
 
-    const verticalLine = svg
-      .append('path')
-
-      // add dashed line
-      .attr('stroke-dasharray', '5,5')
-      .attr('stroke-width', 2)
-      .attr('fill', 'none');
-
     svg
       .append('path')
       .attr('fill', 'none')
@@ -188,43 +177,7 @@ const LineChartVolumeTooltip = ({
       .attr('stroke-width', 2)
       .attr('stroke-linejoin', 'round')
       .attr('stroke-linecap', 'round')
-      .attr('d', line(I))
-      .on('mouseover', event => {
-        const [x, y] = d3.pointer(event, this);
-        const date = xScale.invert(x);
-        const volume = yScale.invert(y);
-        const debouncedUpdate = _.debounce((x, y) => {
-          verticalLine
-            .attr('d', `M ${x} ${yScale(y)} V ${y}`)
-            .attr('stroke', 'black')
-            .attr('stroke-width', 1)
-            .attr('fill', 'none');
-
-          svg
-            .append('circle')
-            .attr('cx', x)
-            .attr('cy', y)
-            .attr('r', 5)
-            .attr('stroke-width', 2)
-            .attr('fill', 'black')
-            .attr('stroke-dasharray', '5,5');
-
-          setHoverData({ x: date, y: volume });
-        }, 5);
-        debouncedUpdate(x, y);
-        svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-      })
-
-      .on('mouseout', () => {
-        svg.on('mousemove', function () {
-          setHoverData({ x: defaultValue?.x, y: defaultValue?.y });
-          svg.selectAll('circle').remove();
-          // when mouse leave, remove vertical line
-          verticalLine.attr('d', '');
-        });
-
-        svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
-      });
+      .attr('d', line(I));
 
     // Construct chart area
     const area = d3
@@ -239,32 +192,106 @@ const LineChartVolumeTooltip = ({
       .attr('fill', `url(#${`shadowGradient-${uid}`})`)
       .attr('d', area(I));
 
+    const POINTS = data.map(d => [xScale(d.x), yScale(d.y), { ...d }]);
+    const tooltip = constructTooltip(svg);
+    function pointermoved(event: any) {
+      const i = d3.bisectCenter(X as any, xScale.invert(d3.pointer(event)[0]));
+      tooltip.style('display', null);
+      (svg as any).property('value', O[i]).dispatch('input', { bubbles: true });
+    }
+
+    function pointerleft() {
+      tooltip.style('display', 'none');
+      tooltip.style('display', 'none');
+      (svg.node() as any).value = null;
+      svg.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
+    }
+
+    function constructTooltip(
+      svg: d3.Selection<SVGSVGElement, undefined, null, undefined>,
+    ): d3.Selection<SVGGElement, undefined, null, undefined> {
+      const tooltip = svg.append('g').style('pointer-events', 'none');
+
+      svg
+        .selectAll('circle')
+        .data(POINTS)
+        .enter()
+        .append('circle')
+        .on('pointerenter pointermove', pointermoved)
+        .on('pointerleave', pointerleft)
+        .on('touchstart', event => event.preventDefault())
+        .on('click', event => {
+          setPointDescription((prevState: any) => {
+            // eslint-disable-next-line no-underscore-dangle
+            const pointClick = event.target.__data__;
+            // if prevstate is the same drop it from array
+            if (prevState.includes(pointClick[2])) {
+              return prevState.filter((item: any) => item !== pointClick[2]);
+            }
+
+            // drop from array 2 first items and return 3rd
+            const pointClickDescription = pointClick[2];
+
+            return prevState.concat(pointClickDescription);
+          });
+        })
+
+        .attr('r', 4)
+        .attr('stroke', 'url(#lineGradient)')
+        .attr('cursor', 'pointer')
+        .attr('stroke-width', 2)
+        .attr('fill', '#1e2730')
+        .attr('cx', 0)
+        .attr('cy', '-5')
+        .attr('cx', d => d[0])
+        .attr('cy', d => d[1])
+        .attr('r', 3)
+
+        .append('line')
+        .attr('y', 3)
+        .attr('stroke', '#4a667a')
+        .attr('stroke-opacity', 0.5)
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '5,3')
+        .attr('x1', 0)
+        .attr('y1', 0)
+        .attr('x2', 0);
+
+      return tooltip;
+    }
+
     return svg.node() as Node;
   }
 
   return (
     <>
-      <Box display="flex" flexDirection="column" justifyContent="flex-start" alignItems="flex-start">
-        <Typography color="primary" variant="h6" fontSize="12px">
-          DAILY TRADING VOLUME
-        </Typography>
-        <Box display="flex" flexDirection="row" alignItems="center" borderRadius="50%">
-          <Typography fontSize="32px" pr={2}>
-            {hoverData.y?.toFixed(2) || 0}
-          </Typography>
-        </Box>
-        <Box display="flex" flexDirection="row" alignItems="center" borderRadius="50%">
-          {/* <Typography fontSize="8px" pr={2}>
-            {hoverData.x?.toString()}
-          </Typography> */}
-        </Box>
-        <Typography fontSize="12px">View (last 24 hours )</Typography>
-      </Box>
-
-      {/* Chart */}
       <div ref={containerRef} />
+
+      {/* Side container with information about points */}
+      <Box display="flex" flexDirection="column" justifyContent="space-around" alignItems="flex-end">
+        {pointDescription &&
+          pointDescription.length > 0 &&
+          pointDescription.map(p => (
+            <Box padding={2} fontWeight={500} borderRadius={2} bgcolor="rgba(52, 49, 58, 0.6)" key={p.id} pb={2}>
+              <div>X: {p.x}</div>
+              <div>Y: {p.y}</div>
+              <div>Target: {p.target}</div>
+              <div>Prediction: {p.prediction}</div>
+              <div> DiagnosisGroupId: {p.diagnosisGroupId}</div>
+              <button
+                type="button"
+                onClick={() => {
+                  const items = pointDescription.filter(item => item.id !== p.id);
+                  setPointDescription(items);
+                }}
+              >
+                Close
+              </button>
+            </Box>
+          ))}
+      </Box>
     </>
   );
 };
 
-export default LineChartVolumeTooltip;
+export default LineChartwithTooltipOnClick;
