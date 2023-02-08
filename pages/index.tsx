@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import LineChartVolume from '@components/LineChartVolume';
 import LineChartVolumeTooltipOnHover from '@components/LineChartVolumeTooltipOnHover';
 import LineChartwithTooltipOnClick from '@components/LineChartwithTooltipOnClick';
+import LineChartVolumeTooltipResponsiveness from '@components/LineChartVolumeTooltipResponsiveness';
 import data, { data2 } from './data/data';
 import { predictionData } from './data/api.model';
 
@@ -41,22 +42,24 @@ const Home: NextPage = () => {
     y: 19431531513,
   };
 
+  const average = data.reduce((a, b) => a + b.volume, 0) / data.length;
+
   return (
     <Container>
-      <Box padding={10}>
-        <LineChartVolumeTooltipOnHover
-          width={700}
-          height={400}
-          item={data2}
-          gradientColor="#27d827"
-          gradientColorMix="#27d827"
-          label="without axis"
-          top={50}
-          right={100}
-          bottom={30}
-          left={50}
+      <Box padding={10} width="100%" display="flex" justifyContent="center" alignItems="center">
+        <LineChartVolumeTooltipResponsiveness
+          width={800}
+          height={280}
+          data={data}
+          gradientColor="#2FC882"
+          gradientColorMix="#2FC882"
+          background="transparent"
+          top={20}
+          right={0}
+          bottom={0}
+          left={0}
           disableAxis
-          defaultValue={DEFAULT_API_DATA}
+          defaultValue={average}
         />
       </Box>
       <Box display="flex" justifyContent="flex-start" alignItems="center" height={300} width={1000}>
