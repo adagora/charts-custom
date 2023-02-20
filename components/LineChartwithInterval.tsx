@@ -341,7 +341,7 @@ const LineChartwithInterval = ({
           }}
           disabled={chosenInterval?.label === intervalOptions[1]?.label}
         >
-          {intervalOptions[0]?.label}
+          {intervalOptions[1]?.label}
         </Button>
         <Button
           onClick={() => {
