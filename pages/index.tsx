@@ -1,86 +1,55 @@
 import type { NextPage } from 'next';
-import { Button, Container, Typography, Box, CircularProgress, Divider } from '@mui/material';
+import { Button, Container, Typography, Box, Divider } from '@mui/material';
 import { useEffect, useState } from 'react';
 import LineChartVolume from '@components/LineChartVolume';
-import LineChartVolumeTooltipOnHover from '@components/LineChartVolumeTooltipOnHover';
 import LineChartwithTooltipOnClick from '@components/LineChartwithTooltipOnClick';
-import LineChartVolumeTooltipResponsiveness from '@components/LineChartVolumeTooltipResponsiveness';
+import * as d3 from 'd3';
+import LineChartwithInterval from '@components/LineChartwithInterval';
 import data, { data2 } from './data/data';
 import { predictionData } from './data/api.model';
 
 const Home: NextPage = () => {
-  const [pending, setPending] = useState(true);
-  let color1;
-  let color2;
-  let color3;
-  // render 3 random colors
-  const randomColor = () => {
-    color1 = Math.floor(Math.random() * 16777215).toString(16);
-    color2 = Math.floor(Math.random() * 16777215).toString(16);
-    color3 = Math.floor(Math.random() * 16777215).toString(16);
-    return { color1, color2, color3 };
-  };
-
-  // simulate loading for 2 seconds
-  useEffect(() => {
-    randomColor();
-    const timer = setTimeout(() => {
-      setPending(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [pending]);
-
-  const DEFAULT_API_DATA = {
-    x: new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    }),
-    y: 19431531513,
-  };
-
-  const average = data.reduce((a, b) => a + b.volume, 0) / data.length;
+  const arrayResponse: any = [];
+  let average: any = 0;
+  d3.csv('http://localhost:3000/blockchain_sample_data.csv').then((response: any) => {
+    response.forEach((item: any) => {
+      arrayResponse.push({
+        date: new Date(item.date),
+        avg_transfer_value: item.avg_transfer_value,
+        transfers_count: item.transfers_count,
+      });
+    });
+  });
 
   return (
     <Container>
       <Box padding={10} width="100%" display="flex" justifyContent="center" alignItems="center">
-        <LineChartVolumeTooltipResponsiveness
+        <LineChartwithInterval
           width={800}
           height={280}
-          data={data}
+          data={arrayResponse}
           gradientColor="#2FC882"
           gradientColorMix="#2FC882"
           background="transparent"
           top={20}
-          right={0}
-          bottom={0}
-          left={0}
-          disableAxis
-          defaultValue={average}
+          right={50}
+          bottom={20}
+          left={40}
+          // disableAxis
+          defaultValue={0.0}
         />
       </Box>
+
       <Box display="flex" justifyContent="flex-start" alignItems="center" height={300} width={1000}>
-        <Box display="flex" flexDirection="column" justifyContent="flex-end" alignItems="center">
-          <Box pb={2}>
-            <Button type="submit" variant="contained" size="small" onClick={() => setPending(true)}>
-              Random color
-            </Button>
-          </Box>
-          {pending ? (
-            <CircularProgress />
-          ) : (
-            <LineChartwithTooltipOnClick
-              width={700}
-              height={400}
-              item={predictionData}
-              gradientColor={randomColor().color1}
-              gradientColorMix={randomColor().color2}
-              background={randomColor().color3}
-            />
-          )}
+        <Box display="flex" flexDirection="row" justifyContent="flex-end" alignItems="center">
+          <LineChartwithTooltipOnClick
+            width={700}
+            height={400}
+            item={predictionData}
+            gradientColor="#fff"
+            gradientColorMix="#2FC882"
+            background="transparent"
+          />
         </Box>
       </Box>
 

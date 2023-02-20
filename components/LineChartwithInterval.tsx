@@ -1,15 +1,15 @@
+/* eslint-disable no-restricted-globals */
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Box } from '@mui/system';
-import { Chip, Typography } from '@mui/material';
+import { Button, Chip, Typography } from '@mui/material';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import { IApiFullModel } from '@pages/data/api.model';
 
 type LineChartProps = {
   width: number;
   height: number;
-  data: IApiFullModel[];
+  data: any[];
   label?: string;
   gradientColor: string;
   gradientColorMix: string;
@@ -21,10 +21,11 @@ type LineChartProps = {
   left?: number;
   // when not disableAxis play with top/right/bottom/left to adjust the chart position
   disableAxis?: boolean;
-  defaultValue: number | string;
+  defaultValue?: number | string;
   showTooltip?: boolean;
 };
-export const LineChart = ({
+
+const LineChartwithInterval = ({
   width,
   height,
   data,
@@ -44,37 +45,75 @@ export const LineChart = ({
   const axesRef = useRef(null);
   const [hoverData, setHoverData] = useState<{
     x: Date | number | string | null | undefined;
-    y: number | string;
+    y: number | string | null | undefined;
+    z?: number | string | null | undefined;
   }>({
     x: undefined,
     y: defaultValue,
+    z: undefined,
   });
+
+  const intervalOptions = [
+    { interval: d3.timeDay, label: '1D' },
+    { interval: d3.timeWeek, label: '1W' },
+    { interval: d3.timeMonth, label: '1M' },
+    { interval: d3.timeYear, label: '1Y' },
+  ];
+
+  const [chosenInterval, setChosenInterval] = useState<any>(intervalOptions[2]);
+
+  const [showAllData, setShowAllData] = useState(false);
+  // Get the minimum and maximum dates from the data
+  const [minDate, maxDate] = d3.extent(data, d => d.date);
+  // Generate the intervals based on the chosen interval
+  const intervals = chosenInterval?.interval.range(minDate, maxDate);
+
+  const filteredData = useMemo(() => {
+    return showAllData
+      ? data
+      : data.filter(
+          d =>
+            chosenInterval.interval.floor(d.date).getTime() === chosenInterval.interval.floor(intervals[0]).getTime() ||
+            chosenInterval.interval.floor(d.date).getTime() ===
+              chosenInterval.interval.ceil(intervals[intervals.length - 1]).getTime(),
+        );
+  }, [data, showAllData, chosenInterval, intervals]);
 
   // bounds = area inside the graph axis = calculated by substracting the margins
   const boundsWidth = width - right - left;
   const boundsHeight = height - top - bottom;
 
   // Y axis
-  const [min, max] = d3.extent(data, d => d.volume);
+  const [min, max] = d3.extent(data, d => d.avg_transfer_value);
+
+  const maxYTransferCount: any = d3.max(filteredData, function (d) {
+    return +d.transfers_count;
+  });
+
+  const maxY: any = d3.max(filteredData, function (d) {
+    return +d.avg_transfer_value;
+  });
 
   const yScale = useMemo(() => {
-    return d3
-      .scaleLinear()
-      .domain([0, max || 0])
-      .range([boundsHeight, 0]);
-  }, [max, boundsHeight]);
+    return d3.scaleLinear().domain([0, maxY]).range([boundsHeight, 0]);
+  }, [maxY, boundsHeight]);
 
-  // X axis
-  const [xMin, xMax] = d3.extent(data, d => d.date);
-  const X = d3.map(data, x => new Date(x.date));
-  const Y = d3.map(data, y => y.volume);
-  const O = d3.map(data, d => d);
-  const I = d3.map(data, (_, i) => i);
+  const X = d3.map(filteredData, x => new Date(x.date));
+  const Y = d3.map(filteredData, y => y.avg_transfer_value);
+
+  const O = d3.map(filteredData, d => d);
+  const I = d3.map(filteredData, (_, i) => i);
   // Compute default domains.
   const xDomain = d3.extent(X);
-  const maxY = d3.max(Y);
   // Construct scales and axes.
   const xScale = d3.scaleUtc(xDomain as Iterable<Date>, [left, width - right]);
+
+  const volumeScale = useMemo(() => {
+    return d3
+      .scaleLinear()
+      .range([boundsHeight / 10, 0])
+      .domain([0, maxYTransferCount]);
+  }, [maxYTransferCount, boundsHeight]);
 
   // Render the X and Y axis using d3.js, not react
   useLayoutEffect(() => {
@@ -89,6 +128,7 @@ export const LineChart = ({
       .style('visibility', disableAxis ? 'hidden' : 'visible');
 
     const yAxisGenerator = d3.axisLeft(yScale);
+
     svgElement
       .append('g')
       .call(yAxisGenerator)
@@ -182,6 +222,20 @@ export const LineChart = ({
       return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
     };
 
+    // Add the volume bars
+    svgElement
+      .selectAll('.bar')
+      .data(filteredData)
+      .enter()
+      .append('rect')
+      .attr('class', 'bar')
+      .attr('x', d => xScale(d.date))
+      .attr('y', d => boundsHeight - volumeScale(d.transfers_count))
+      .attr('width', 2)
+      .attr('height', d => Math.max(0, volumeScale(d.transfers_count)))
+      .attr('fill', 'steelblue')
+      .attr('opacity', 0.5);
+
     svgElement
       .append('rect')
       .attr('class', 'RectClass')
@@ -196,13 +250,13 @@ export const LineChart = ({
         const [x, y] = d3.pointer(event, this);
 
         // Find the closest point on the line chart to the current mouse position
-        let closestPoint = { x: 0, y: 0 };
+        let closestPoint = { x: 0, y: 0, z: 0 };
         let minDistance = Number.MAX_VALUE;
         O.forEach(point => {
-          const distance = distanceBetweenPoints(xScale(point.date), yScale(point.volume), x, y);
+          const distance = distanceBetweenPoints(xScale(point.date), yScale(point.avg_transfer_value), x, y);
           if (distance < minDistance) {
             minDistance = distance;
-            closestPoint = { x: xScale(point.date), y: yScale(point.volume) };
+            closestPoint = { x: xScale(point.date), y: yScale(point.avg_transfer_value), z: point.transfers_count };
           }
         });
 
@@ -220,7 +274,11 @@ export const LineChart = ({
         const dateCLOSEST = xScale.invert(closestPoint.x);
         const volumeCLOSEST = yScale.invert(closestPoint.y);
 
-        setHoverData({ x: dateCLOSEST, y: volumeCLOSEST });
+        // format to UTC time
+        const date = new Date(dateCLOSEST);
+        const dateUTC = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+
+        setHoverData({ x: dateUTC, y: volumeCLOSEST, z: closestPoint.z });
 
         svgElement.dispatch('input', { bubbles: true } as d3.CustomEventParameters);
       });
@@ -254,9 +312,9 @@ export const LineChart = ({
 
   // Build the line
   const lineBuilder = d3
-    .line<IApiFullModel>()
+    .line<any>()
     .x(d => xScale(d.date))
-    .y(d => yScale(d.volume));
+    .y(d => yScale(d.avg_transfer_value));
 
   const linePath = lineBuilder(data);
   if (!linePath) {
@@ -265,6 +323,55 @@ export const LineChart = ({
 
   return (
     <div>
+      <Box width={250} display="flex" justifyContent="space-between" pb={1}>
+        <Button
+          onClick={() => {
+            setShowAllData(false);
+            setChosenInterval(intervalOptions[0]);
+          }}
+          disabled={chosenInterval?.label === intervalOptions[0]?.label}
+        >
+          {intervalOptions[0]?.label}
+        </Button>
+        <Button
+          onClick={() => {
+            setShowAllData(false);
+            setChosenInterval(intervalOptions[1]);
+          }}
+          disabled={chosenInterval?.label === intervalOptions[1]?.label}
+        >
+          {intervalOptions[0]?.label}
+        </Button>
+        <Button
+          onClick={() => {
+            setShowAllData(false);
+            setChosenInterval(intervalOptions[2]);
+          }}
+          disabled={chosenInterval?.label === intervalOptions[2]?.label}
+        >
+          {intervalOptions[2]?.label}
+        </Button>
+        <Button
+          onClick={() => {
+            setShowAllData(false);
+            setChosenInterval(intervalOptions[3]);
+          }}
+          disabled={chosenInterval?.label === intervalOptions[3]?.label}
+        >
+          {intervalOptions[3]?.label}
+        </Button>
+
+        <Button
+          onClick={() => {
+            setShowAllData(true);
+            setChosenInterval(null);
+          }}
+          disabled={showAllData}
+        >
+          All
+        </Button>
+      </Box>
+
       <Box
         display="flex"
         flexDirection="column"
@@ -274,23 +381,33 @@ export const LineChart = ({
         height={150}
       >
         <Typography color="primary" variant="h6" fontSize="12px">
-          {hoverData.y === defaultValue ? 'AVERAGE DAILY TRADING VOLUME' : 'DAILY TRADING VOLUME'}
+          {hoverData.y === defaultValue
+            ? `${showAllData ? `All` : chosenInterval.label} TRADING VOLUME`
+            : 'TRADING VOLUME'}
         </Typography>
         <Box display="flex" flexDirection="row" alignItems="center" borderRadius="50%">
-          {hoverData && (
+          {isNaN(Number(hoverData.y)) ? (
+            defaultValue
+          ) : (
             <Typography fontSize="32px" pr={2} width={300}>
-              {Number(hoverData.y).toFixed(2)} USDC
+              {Number(hoverData.y).toFixed(2)}
             </Typography>
           )}
           <Chip
             sx={{ bgcolor: '#1e2929', color: '#2FC882' }}
             icon={['collection'].length > 0 ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
-            label="8%"
+            label="X%"
           />
         </Box>
         <Typography color="#737474" fontSize="12px">
-          View (last 24 hours )
+          {hoverData.x ? hoverData.x.toString() : showAllData ? `All` : `Last ${chosenInterval?.label}`}
         </Typography>
+
+        {hoverData.z && (
+          <Typography color="steelblue" fontSize="12px">
+            Transaction count: {hoverData.z && hoverData.z}
+          </Typography>
+        )}
       </Box>
       <svg width={width} height={height} style={{ backgroundColor: background }}>
         <g
@@ -305,4 +422,4 @@ export const LineChart = ({
   );
 };
 
-export default LineChart;
+export default LineChartwithInterval;
