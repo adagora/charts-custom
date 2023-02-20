@@ -44,7 +44,6 @@ const pages = [
 ];
 
 interface INavItemProps {
-  size: number;
   page: {
     name: string;
     link: string;
@@ -52,9 +51,9 @@ interface INavItemProps {
   };
 }
 
-interface IHeaderProps {}
+// interface IHeaderProps {}
 
-const Header: FC<IHeaderProps> = ({}) => {
+const Header: FC = () => {
   const { theme, setTheme } = useContext(ThemeContext);
   const [navbarOpen, setNavbarOpen] = React.useState(false);
 
@@ -62,12 +61,12 @@ const Header: FC<IHeaderProps> = ({}) => {
 
   const toggleTheme = () => {
     setTheme((prevTheme: Theme) => (prevTheme === LightTheme ? DarkTheme : LightTheme));
-    let temp = theme === LightTheme ? 'dark' : 'light';
+    const temp = theme === LightTheme ? 'dark' : 'light';
     localStorage.setItem('darkToggle', temp);
-    console.log(temp);
   };
 
-  const NavigationListItem: React.FC<INavItemProps> = ({ size, page }) => {
+  // eslint-disable-next-line react/no-unstable-nested-components
+  const NavigationListItem: React.FC<INavItemProps> = ({ page }) => {
     return (
       <Grid item>
         {page.disabled ? (
@@ -141,8 +140,8 @@ const Header: FC<IHeaderProps> = ({}) => {
             </Grid>
             <Grid item sx={{ display: { xs: 'none', md: 'flex' } }}>
               <Grid container spacing={3}>
-                {pages.map((page, i) => (
-                  <NavigationListItem size={13} key={i} page={page} />
+                {pages.map(page => (
+                  <NavigationListItem key={page.name} page={page} />
                 ))}
               </Grid>
             </Grid>
@@ -236,7 +235,7 @@ const Header: FC<IHeaderProps> = ({}) => {
                 transition: 'transform 100ms ease-in-out',
                 transform: `${navbarOpen ? 'rotate(45deg)' : 'translateY(6px)'}`,
               }}
-            ></Box>
+            />
             <Box
               sx={{
                 position: 'absolute',
@@ -247,7 +246,7 @@ const Header: FC<IHeaderProps> = ({}) => {
                 transition: 'transform 100ms ease-in-out',
                 transform: `${navbarOpen ? 'rotate(-45deg)' : 'translateY(-6px)'}`,
               }}
-            ></Box>
+            />
           </Box>
         </Box>
       </Fade>
@@ -275,8 +274,8 @@ const Header: FC<IHeaderProps> = ({}) => {
           >
             <Grid item>
               <Grid container spacing={3} direction="column" justifyContent="flex-end" alignItems="flex-start" sx={{}}>
-                {pages.map((page, i) => (
-                  <NavigationListItem size={20} key={i} page={page} />
+                {pages.map(page => (
+                  <NavigationListItem key={page.name} page={page} />
                 ))}
               </Grid>
             </Grid>

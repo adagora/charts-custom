@@ -1,10 +1,18 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { IApiFullModel } from '@pages/data/api.model';
 import { Typography } from '@mui/material';
 import { Box } from '@mui/system';
 import _ from 'lodash';
 
+export interface IApiFullModel {
+  date: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  adjclose: number;
+}
 interface LineChartVolumeProps {
   width?: number;
   height?: number;
@@ -55,6 +63,7 @@ const LineChartVolumeTooltipOnHover = ({
 
   const buildChart = () => {
     if (dataChart.length && containerRef.current) {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
       containerRef.current.append(lineChart(dataChart, label));
     }
   };
@@ -66,7 +75,9 @@ const LineChartVolumeTooltipOnHover = ({
   function lineChart(data: IApiFullModel[], title: string) {
     const X = d3.map(data, x => new Date(x.date));
     const Y = d3.map(data, y => y.volume);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const O = d3.map(data, d => d);
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     const I = d3.map(data, (_, i) => i);
 
     // Compute default domains.
@@ -190,20 +201,20 @@ const LineChartVolumeTooltipOnHover = ({
       .attr('stroke-linecap', 'round')
       .attr('d', line(I))
       .on('mouseover', event => {
-        const [x, y] = d3.pointer(event, this);
+        const [x, y] = d3.pointer(event);
         const date = xScale.invert(x);
         const volume = yScale.invert(y);
-        const debouncedUpdate = _.debounce((x, y) => {
+        const debouncedUpdate = _.debounce((a, b) => {
           verticalLine
-            .attr('d', `M ${x} ${yScale(y)} V ${y}`)
+            .attr('d', `M ${a} ${yScale(b)} V ${b}`)
             .attr('stroke', 'black')
             .attr('stroke-width', 1)
             .attr('fill', 'none');
 
           svg
             .append('circle')
-            .attr('cx', x)
-            .attr('cy', y)
+            .attr('cx', a)
+            .attr('cy', b)
             .attr('r', 5)
             .attr('stroke-width', 2)
             .attr('fill', 'black')
@@ -216,6 +227,7 @@ const LineChartVolumeTooltipOnHover = ({
       })
 
       .on('mouseout', () => {
+        // eslint-disable-next-line func-names
         svg.on('mousemove', function () {
           setHoverData({ x: defaultValue?.x, y: defaultValue?.y });
           svg.selectAll('circle').remove();

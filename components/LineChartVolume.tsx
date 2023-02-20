@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { IApiFullModel } from '@pages/data/api.model';
+
+export interface IApiFullModel {
+  date: Date;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  adjclose: number;
+}
 
 interface LineChartVolumeProps {
   width: number;
@@ -42,6 +51,7 @@ const LineChartVolume = ({
 
   const buildChart = () => {
     if (dataChart.length && containerRef.current) {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
       containerRef.current.append(lineChart(dataChart, label));
     }
   };

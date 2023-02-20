@@ -25,10 +25,10 @@ const SocialGrid: FC<Props> = props => {
   const { hoverColor, iconColor, reddit, discord, linkedin, medium, telegram, twitter, youtube } = props;
   const { theme } = useContext(ThemeContext);
   const iconLinkStyles = {
-    color: iconColor ? iconColor : theme.palette.text.primary,
+    color: iconColor || theme.palette.text.primary,
     fontSize: 'inherit',
     '&:hover': {
-      color: hoverColor ? hoverColor : theme.palette.primary.main,
+      color: hoverColor || theme.palette.primary.main,
     },
   };
 

@@ -1,7 +1,6 @@
 import React, { FC, useContext } from 'react';
 import Grid from '@mui/material/Grid';
 import Container from '@mui/material/Container';
-import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Link from '@components/Link';
 import SocialGrid from '@components/layout/SocialGrid';
@@ -96,11 +95,11 @@ const LinkList: FC<IPageLinkList> = ({ title, links }) => {
   return (
     <Grid item xs={6} md={3} sx={{}} zeroMinWidth>
       <Typography sx={titleFont}>{title}</Typography>
-      {links.map((page, i) => (
+      {links.map(page => (
         <Typography>
           <Link
             href={page.link}
-            key={i}
+            key={page.name}
             sx={{
               color: theme.palette.text.primary,
               textDecoration: 'none',

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Box } from '@mui/system';
@@ -208,11 +209,11 @@ const LineChartwithTooltipOnClick = ({
     }
 
     function constructTooltip(
-      svg: d3.Selection<SVGSVGElement, undefined, null, undefined>,
+      svgItem: d3.Selection<SVGSVGElement, undefined, null, undefined>,
     ): d3.Selection<SVGGElement, undefined, null, undefined> {
-      const tooltip = svg.append('g').style('pointer-events', 'none');
+      const Tooltip = svg.append('g').style('pointer-events', 'none');
 
-      svg
+      svgItem
         .selectAll('circle')
         .data(POINTS)
         .enter()
@@ -226,7 +227,7 @@ const LineChartwithTooltipOnClick = ({
             const pointClick = event.target.__data__;
             // if prevstate is the same drop it from array
             if (prevState.includes(pointClick[2])) {
-              return prevState.filter((item: any) => item !== pointClick[2]);
+              return prevState.filter((i: any) => i !== pointClick[2]);
             }
 
             // drop from array 2 first items and return 3rd
@@ -243,8 +244,8 @@ const LineChartwithTooltipOnClick = ({
         .attr('fill', '#1e2730')
         .attr('cx', 0)
         .attr('cy', '-5')
-        .attr('cx', d => d[0])
-        .attr('cy', d => d[1])
+        .attr('cx', d => d[0] as any)
+        .attr('cy', d => d[1] as any)
         .attr('r', 3)
 
         .append('line')
@@ -257,7 +258,7 @@ const LineChartwithTooltipOnClick = ({
         .attr('y1', 0)
         .attr('x2', 0);
 
-      return tooltip;
+      return Tooltip;
     }
 
     return svg.node() as Node;
@@ -281,7 +282,7 @@ const LineChartwithTooltipOnClick = ({
               <button
                 type="button"
                 onClick={() => {
-                  const items = pointDescription.filter(item => item.id !== p.id);
+                  const items = pointDescription.filter(i => i.id !== p.id);
                   setPointDescription(items);
                 }}
               >

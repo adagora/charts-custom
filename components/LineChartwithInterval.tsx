@@ -1,3 +1,4 @@
+/* eslint-disable func-names */
 /* eslint-disable no-restricted-globals */
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
@@ -84,8 +85,6 @@ const LineChartwithInterval = ({
   const boundsHeight = height - top - bottom;
 
   // Y axis
-  const [min, max] = d3.extent(data, d => d.avg_transfer_value);
-
   const maxYTransferCount: any = d3.max(filteredData, function (d) {
     return +d.transfers_count;
   });
@@ -218,7 +217,7 @@ const LineChartwithInterval = ({
       .attr('stroke-linecap', 'round')
       .attr('d', line(I) as any);
 
-    const distanceBetweenPoints = (x1, y1, x2, y2) => {
+    const distanceBetweenPoints = (x1: number, y1: number, x2: number, y2: number) => {
       return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
     };
 
@@ -321,6 +320,8 @@ const LineChartwithInterval = ({
     return null;
   }
 
+  const isAllData = showAllData ? `All` : `Last ${chosenInterval?.label}`;
+
   return (
     <div>
       <Box width={250} display="flex" justifyContent="space-between" pb={1}>
@@ -400,12 +401,12 @@ const LineChartwithInterval = ({
           />
         </Box>
         <Typography color="#737474" fontSize="12px">
-          {hoverData.x ? hoverData.x.toString() : showAllData ? `All` : `Last ${chosenInterval?.label}`}
+          {hoverData.x ? hoverData.x.toString() : isAllData}
         </Typography>
 
         {hoverData.z && (
           <Typography color="steelblue" fontSize="12px">
-            Transaction count: {hoverData.z && hoverData.z}
+            TX count: {hoverData.z && hoverData.z}
           </Typography>
         )}
       </Box>
