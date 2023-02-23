@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
 export interface IApiFullModel {
-  date: Date;
+  date: Date | string;
   open: number;
   high: number;
   low: number;
